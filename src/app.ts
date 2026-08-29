@@ -3,6 +3,7 @@ import express from 'express';
 import { errorHandler, notFoundHandler } from './middleware/error-handler';
 import { authRoutes } from './modules/auth/auth.routes';
 import { brokerRoutes } from './modules/brokers/broker.routes';
+import { formRoutes } from './modules/forms/form.routes';
 
 export function createApp() {
   const app = express();
@@ -17,6 +18,7 @@ export function createApp() {
 
   app.use('/api/auth', authRoutes);
   app.use('/api/brokers', brokerRoutes);
+  app.use('/api/forms', formRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
