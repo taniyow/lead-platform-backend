@@ -3,6 +3,7 @@ import express from 'express';
 import { errorHandler, notFoundHandler } from './middleware/error-handler';
 import { authRoutes } from './modules/auth/auth.routes';
 import { brokerRoutes } from './modules/brokers/broker.routes';
+import { dashboardRoutes } from './modules/dashboard/dashboard.routes';
 import { distributionRoutes } from './modules/distributions/distribution.routes';
 import { formRoutes } from './modules/forms/form.routes';
 import { leadRoutes, publicRoutes } from './modules/leads/lead.routes';
@@ -24,6 +25,7 @@ export function createApp() {
   app.use('/api/distributions', distributionRoutes);
   app.use('/api/public', publicRoutes);
   app.use('/api/leads', leadRoutes);
+  app.use('/api/dashboard', dashboardRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
