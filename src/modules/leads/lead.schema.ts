@@ -6,7 +6,9 @@ export const leadIdSchema = z.coerce.number().int().positive();
 
 export const publicLeadSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(191),
-  email: z.email('Enter a valid email address').max(191),
+  // Trim before validating: submissions like " USER@Example.com " must be
+  // accepted and normalized, per the assessment's normalization rule.
+  email: z.string().trim().max(191).pipe(z.email('Enter a valid email address')),
   phone: z
     .string()
     .trim()
