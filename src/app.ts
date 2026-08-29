@@ -2,6 +2,7 @@ import cookieParser from 'cookie-parser';
 import express from 'express';
 import { errorHandler, notFoundHandler } from './middleware/error-handler';
 import { authRoutes } from './modules/auth/auth.routes';
+import { brokerRoutes } from './modules/brokers/broker.routes';
 
 export function createApp() {
   const app = express();
@@ -15,6 +16,7 @@ export function createApp() {
   });
 
   app.use('/api/auth', authRoutes);
+  app.use('/api/brokers', brokerRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
