@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../../middleware/auth';
-import { create, index, show, update } from './broker.controller';
+import { create, index, leads, show, update } from './broker.controller';
 
 export const brokerRoutes = Router();
 
@@ -9,3 +9,4 @@ brokerRoutes.get('/', index);
 brokerRoutes.post('/', create);
 brokerRoutes.get('/:id', show);
 brokerRoutes.patch('/:id', update);
+brokerRoutes.get('/:id/leads', leads);

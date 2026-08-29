@@ -1,7 +1,18 @@
-import { Broker } from '@prisma/client';
+import { Broker, LeadStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { ApiError } from '../../middleware/error-handler';
 import { CreateBrokerInput, UpdateBrokerInput, WeekDay } from './broker.schema';
+
+export interface BrokerLeadDto {
+  id: number;
+  name: string;
+  normalizedEmail: string;
+  phone: string;
+  ipAddress: string;
+  formName: string;
+  receivedAt: Date | null;
+  status: LeadStatus;
+}
 
 export interface BrokerDto {
   id: number;
@@ -65,4 +76,28 @@ export async function updateBroker(id: number, input: UpdateBrokerInput): Promis
 
   const broker = await prisma.broker.update({ where: { id }, data: input });
   return toBrokerDto(broker);
+}
+
+export async function getBrokerLeads(brokerId: number): Promise<BrokerLeadDto[]> {
+  const broker = await prisma.broker.findUnique({ where: { id: brokerId } });
+  if (!broker) {
+    throw new ApiError(404, 'Broker not found');
+  }
+
+  const leads = await prisma.lead.findMany({
+    where: { assignedBrokerId: brokerId },
+    include: { form: { select: { name: true } } },
+    orderBy: { assignedAt: 'desc' },
+  });
+
+  return leads.map((lead) => ({
+    id: lead.id,
+    name: lead.name,
+    normalizedEmail: lead.normalizedEmail,
+    phone: lead.phone,
+    ipAddress: lead.ipAddress,
+    formName: lead.form.name,
+    receivedAt: lead.assignedAt,
+    status: lead.status,
+  }));
 }
