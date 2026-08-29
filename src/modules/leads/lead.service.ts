@@ -28,8 +28,114 @@ interface LeadCreateData {
   formId: number;
 }
 
+export interface AdminLeadDto {
+  id: number;
+  name: string;
+  normalizedEmail: string;
+  phone: string;
+  ipAddress: string;
+  formName: string;
+  brokerName: string | null;
+  status: LeadStatus;
+  createdAt: Date;
+  assignedAt: Date | null;
+}
+
+const adminLeadInclude = {
+  form: { select: { name: true } },
+  assignedBroker: { select: { name: true } },
+} satisfies Prisma.LeadInclude;
+
+type LeadWithRelations = Prisma.LeadGetPayload<{ include: typeof adminLeadInclude }>;
+
+function toAdminLeadDto(lead: LeadWithRelations): AdminLeadDto {
+  return {
+    id: lead.id,
+    name: lead.name,
+    normalizedEmail: lead.normalizedEmail,
+    phone: lead.phone,
+    ipAddress: lead.ipAddress,
+    formName: lead.form.name,
+    brokerName: lead.assignedBroker?.name ?? null,
+    status: lead.status,
+    createdAt: lead.createdAt,
+    assignedAt: lead.assignedAt,
+  };
+}
+
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
+}
+
+export async function listLeads(): Promise<AdminLeadDto[]> {
+  const leads = await prisma.lead.findMany({
+    include: adminLeadInclude,
+    orderBy: { createdAt: 'desc' },
+  });
+  return leads.map(toAdminLeadDto);
+}
+
+/**
+ * Manual assignment is an administrative override: it does not enforce the
+ * broker's schedule or daily cap (otherwise it would be useless in exactly the
+ * situations that produce unsent leads). It still enforces that the lead is
+ * unsent, the broker exists and belongs to the distribution, and that the
+ * email has not been assigned to any broker in the meantime.
+ */
+export async function manuallyAssignLead(leadId: number, brokerId: number): Promise<AdminLeadDto> {
+  return withSerializableRetry(() =>
+    prisma.$transaction(
+      async (tx) => {
+        const lead = await tx.lead.findUnique({ where: { id: leadId } });
+        if (!lead) {
+          throw new ApiError(404, 'Lead not found');
+        }
+        if (lead.status !== 'unsent') {
+          throw new ApiError(409, 'Only unsent leads can be manually assigned');
+        }
+
+        const broker = await tx.broker.findUnique({ where: { id: brokerId } });
+        if (!broker) {
+          throw new ApiError(404, 'Broker not found');
+        }
+
+        const distribution = await tx.distribution.findFirst({
+          include: { brokers: { where: { brokerId } } },
+        });
+        if (!distribution) {
+          throw new ApiError(400, 'No distribution exists yet');
+        }
+        if (distribution.brokers.length === 0) {
+          throw new ApiError(400, 'Broker is not part of the distribution');
+        }
+
+        const alreadyAssigned = await tx.lead.findFirst({
+          where: {
+            normalizedEmail: lead.normalizedEmail,
+            assignedBrokerId: { not: null },
+            id: { not: lead.id },
+          },
+          select: { id: true },
+        });
+        if (alreadyAssigned) {
+          throw new ApiError(409, 'This email has already been assigned to a broker');
+        }
+
+        const updated = await tx.lead.update({
+          where: { id: lead.id },
+          data: {
+            status: 'sent',
+            assignedBrokerId: brokerId,
+            assignedAt: new Date(),
+            distributionId: lead.distributionId ?? distribution.id,
+          },
+          include: adminLeadInclude,
+        });
+        return toAdminLeadDto(updated);
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    ),
+  );
 }
 
 export async function getPublicFormBySlug(slug: string): Promise<PublicFormDto> {
