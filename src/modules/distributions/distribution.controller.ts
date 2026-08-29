@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
-import { distributionIdSchema } from './distribution.schema';
+import { configureBrokersSchema, distributionIdSchema } from './distribution.schema';
 import {
+  configureBrokers,
   createDistribution,
   getDistribution,
   getDistributionById,
@@ -21,6 +22,13 @@ export async function showById(req: Request, res: Response) {
 export async function create(_req: Request, res: Response) {
   const distribution = await createDistribution();
   res.status(201).json({ data: { distribution }, error: null });
+}
+
+export async function updateBrokers(req: Request, res: Response) {
+  const id = distributionIdSchema.parse(req.params.id);
+  const input = configureBrokersSchema.parse(req.body);
+  const distribution = await configureBrokers(id, input);
+  res.json({ data: { distribution }, error: null });
 }
 
 export async function leads(req: Request, res: Response) {

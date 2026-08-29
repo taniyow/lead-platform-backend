@@ -2,6 +2,7 @@ import { LeadStatus, Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { ApiError } from '../../middleware/error-handler';
 import { WeekDay } from '../brokers/broker.schema';
+import { ConfigureBrokersInput } from './distribution.schema';
 
 export interface DistributionBrokerDto {
   brokerId: number;
@@ -118,6 +119,51 @@ export async function createDistribution(): Promise<DistributionDto> {
     }
     throw err;
   }
+}
+
+export async function configureBrokers(
+  id: number,
+  input: ConfigureBrokersInput,
+): Promise<DistributionDto> {
+  const distribution = await prisma.distribution.findUnique({ where: { id } });
+  if (!distribution) {
+    throw new ApiError(404, 'Distribution not found');
+  }
+
+  const brokerIds = input.brokers.map((b) => b.brokerId);
+  const existingBrokers = await prisma.broker.findMany({
+    where: { id: { in: brokerIds } },
+    select: { id: true },
+  });
+  if (existingBrokers.length !== brokerIds.length) {
+    const found = new Set(existingBrokers.map((b) => b.id));
+    const missing = brokerIds.filter((brokerId) => !found.has(brokerId));
+    throw new ApiError(400, `Unknown broker id(s): ${missing.join(', ')}`);
+  }
+
+  // Full replacement of the participation set, atomically: brokers omitted
+  // from the payload are removed, the rest are upserted.
+  await prisma.$transaction([
+    prisma.distributionBroker.deleteMany({
+      where: { distributionId: id, brokerId: { notIn: brokerIds } },
+    }),
+    ...input.brokers.map((entry) =>
+      prisma.distributionBroker.upsert({
+        where: {
+          distributionId_brokerId: { distributionId: id, brokerId: entry.brokerId },
+        },
+        update: { percentage: entry.percentage, active: entry.active },
+        create: {
+          distributionId: id,
+          brokerId: entry.brokerId,
+          percentage: entry.percentage,
+          active: entry.active,
+        },
+      }),
+    ),
+  ]);
+
+  return getDistributionById(id);
 }
 
 export async function getDistributionLeads(id: number): Promise<DistributionLeadDto[]> {
