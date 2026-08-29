@@ -6,3 +6,111 @@ datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
+
+enum LeadStatus {
+  sent
+  unsent
+  duplicate
+  failed
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Broker {
+  id          Int      @id @default(autoincrement())
+  name        String
+  active      Boolean  @default(true)
+  dailyCap    Int
+  timezone    String
+  openingTime String
+  closingTime String
+  workingDays Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  distributionBrokers DistributionBroker[]
+  leads               Lead[]
+
+  @@map("brokers")
+}
+
+model Form {
+  id           Int      @id @default(autoincrement())
+  name         String
+  slug         String   @unique
+  // Always 1: the unique constraint makes a second form impossible at the DB layer.
+  singletonKey Int      @unique @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  distribution Distribution?
+  leads        Lead[]
+
+  @@map("forms")
+}
+
+model Distribution {
+  id           Int      @id @default(autoincrement())
+  formId       Int      @unique
+  // Always 1: the unique constraint makes a second distribution impossible at the DB layer.
+  singletonKey Int      @unique @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  form    Form                 @relation(fields: [formId], references: [id])
+  brokers DistributionBroker[]
+  leads   Lead[]
+
+  @@map("distributions")
+}
+
+model DistributionBroker {
+  id             Int      @id @default(autoincrement())
+  distributionId Int
+  brokerId       Int
+  percentage     Float
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  distribution Distribution @relation(fields: [distributionId], references: [id])
+  broker       Broker       @relation(fields: [brokerId], references: [id])
+
+  @@unique([distributionId, brokerId])
+  @@map("distribution_brokers")
+}
+
+model Lead {
+  id               Int        @id @default(autoincrement())
+  name             String
+  email            String
+  normalizedEmail  String
+  phone            String
+  ipAddress        String
+  formId           Int
+  distributionId   Int?
+  assignedBrokerId Int?
+  status           LeadStatus
+  assignedAt       DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  form           Form          @relation(fields: [formId], references: [id])
+  distribution   Distribution? @relation(fields: [distributionId], references: [id])
+  assignedBroker Broker?       @relation(fields: [assignedBrokerId], references: [id])
+
+  @@index([normalizedEmail])
+  @@index([createdAt])
+  // Composite index serves both the FK lookups and broker-local daily-cap counting.
+  @@index([assignedBrokerId, assignedAt])
+  @@index([status])
+  @@map("leads")
+}
