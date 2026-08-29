@@ -8,6 +8,12 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   JWT_SECRET: z.string().min(16),
   JWT_EXPIRES_IN: z.string().default('1d'),
+  // The VPS serves plain HTTP on an IP:port, so Secure cookies would be dropped
+  // by the browser there. Explicit opt-in for TLS deployments.
+  COOKIE_SECURE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
 });
 
 const parsed = envSchema.safeParse(process.env);

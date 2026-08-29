@@ -1,6 +1,7 @@
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { errorHandler, notFoundHandler } from './middleware/error-handler';
+import { authRoutes } from './modules/auth/auth.routes';
 
 export function createApp() {
   const app = express();
@@ -12,6 +13,8 @@ export function createApp() {
   app.get('/api/health', (_req, res) => {
     res.json({ data: { status: 'ok', uptime: process.uptime() }, error: null });
   });
+
+  app.use('/api/auth', authRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
