@@ -3,6 +3,7 @@ import express from 'express';
 import { errorHandler, notFoundHandler } from './middleware/error-handler';
 import { authRoutes } from './modules/auth/auth.routes';
 import { brokerRoutes } from './modules/brokers/broker.routes';
+import { distributionRoutes } from './modules/distributions/distribution.routes';
 import { formRoutes } from './modules/forms/form.routes';
 
 export function createApp() {
@@ -19,6 +20,7 @@ export function createApp() {
   app.use('/api/auth', authRoutes);
   app.use('/api/brokers', brokerRoutes);
   app.use('/api/forms', formRoutes);
+  app.use('/api/distributions', distributionRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
