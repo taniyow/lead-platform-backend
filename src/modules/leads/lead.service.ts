@@ -2,6 +2,7 @@ import { LeadStatus, Prisma } from '@prisma/client';
 import { getBrokerDayRange } from '../../domain/distribution/get-broker-day-range';
 import { isBrokerOpen } from '../../domain/distribution/is-broker-open';
 import { BrokerCandidate, selectBroker } from '../../domain/distribution/select-broker';
+import { normalizeEmail } from '../../domain/normalize-email';
 import { prisma } from '../../lib/prisma';
 import { logger } from '../../lib/logger';
 import { withSerializableRetry } from '../../lib/transaction';
@@ -61,10 +62,6 @@ function toAdminLeadDto(lead: LeadWithRelations): AdminLeadDto {
     createdAt: lead.createdAt,
     assignedAt: lead.assignedAt,
   };
-}
-
-export function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
 }
 
 export async function listLeads(): Promise<AdminLeadDto[]> {
