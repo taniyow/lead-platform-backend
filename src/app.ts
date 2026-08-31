@@ -5,6 +5,7 @@ import { authRoutes } from './modules/auth/auth.routes';
 import { brokerRoutes } from './modules/brokers/broker.routes';
 import { distributionRoutes } from './modules/distributions/distribution.routes';
 import { formRoutes } from './modules/forms/form.routes';
+import { leadRoutes, publicRoutes } from './modules/leads/lead.routes';
 
 export function createApp() {
   const app = express();
@@ -21,6 +22,8 @@ export function createApp() {
   app.use('/api/brokers', brokerRoutes);
   app.use('/api/forms', formRoutes);
   app.use('/api/distributions', distributionRoutes);
+  app.use('/api/public', publicRoutes);
+  app.use('/api/leads', leadRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
